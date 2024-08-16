@@ -53,8 +53,8 @@ public class Job51 {
 
     private static String getSearchUrl() {
         return baseUrl +
-                JobUtils.appendListParam("jobArea", config.getJobArea()) +
-                JobUtils.appendListParam("salary", config.getSalary());
+                //                JobUtils.appendListParam("jobArea", config.getJobArea())+
+                "&jobArea=040000&jobArea2=040500,040100,040300,040600,041000&salary=06,07&workYear=03,04,05";
     }
 
     private static void Login() {

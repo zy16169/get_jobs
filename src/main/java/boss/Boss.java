@@ -108,7 +108,8 @@ public class Boss {
                 JobUtils.appendListParam("experience", config.getExperience()) +
                 JobUtils.appendListParam("degree", config.getDegree()) +
                 JobUtils.appendListParam("scale", config.getScale()) +
-                JobUtils.appendListParam("stage", config.getStage());
+                JobUtils.appendListParam("stage", config.getStage()) +
+                "&areaBusiness=440309,440311,440306,440307,440304,440305";
     }
 
     private static void saveData(String path) {
