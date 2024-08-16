@@ -45,7 +45,8 @@ public class SeleniumUtil {
         String osType = getOSType(osName);
         switch (osType) {
             case "windows":
-                options.setBinary("C:/Program Files/Google/Chrome/Application/chrome.exe");
+//                options.setBinary("C:/Program Files/Google/Chrome/Application/chrome.exe");
+                options.setBinary("E:/财务管理2021/job/chrome/chrome.exe");
                 System.setProperty("webdriver.chrome.driver", "src/main/resources/chromedriver.exe");
                 break;
             case "mac":
