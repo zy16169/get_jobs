@@ -16,9 +16,11 @@
 ### 🌞 特色功能
 
 - 支持国内全部招聘平台(Boss直聘、猎聘、拉勾、51job、智联招聘)
+- 定时投递，一键投递所有平台，并且再第二天自动定时重新投递
 - 集中化配置，仅需修改配置文件即可完成自定义筛选
+- 支持企业微信消息推送，实时掌控建立投递情况
 - 全局日志记录，投递记录可追踪
-- 内置driver驱动，自动判断系统环境适配驱动版本
+- 内置driver驱动(仅win11)，自动判断系统环境适配驱动版本
 - 超长cookie登录，大部分平台每周仅需扫码一次
 - 内置xpathHelper插件，方便快速定位元素
 - Boss默认过滤猎头岗位，可修改代码自定义修改条件
@@ -48,15 +50,10 @@ cd get_jobs
 
 ### 2️⃣ 环境配置:JDK17+、Maven、Chrome、ChromeDriver
 
-> 目前driver版本号：123.0.6312.122
-> chrome需要版本为：124.0.6367.61及以上(默认最新即可)
-
-- 目前程序自动判断系统环境，使用对应的chromedriver，无需手动下载
-- 但是你的Chrome版本必须是在Chrome官网下载的，并且为最新版本，才可使用
-- 如果你是mac intel芯片版本，请自行下载对应的驱动到src/main/resources路径下解压
-- 如果你是mac m1芯片的版本，需要解压【[chromedriver-mac-arm64.zip](src/main/resources/chromedriver-mac-arm64.zip)
-  】后使用
-- 如果你是linux系统，需要解压【[chromedriver-linux64.zip](src/main/resources/chromedriver-linux64.zip)】后使用
+- 目前程序自动判断系统环境，使用对应的chromedriver，并进行浏览器操作
+- 但是你的Chrome版本必须是在[Chrome官网](https://googlechromelabs.github.io/chrome-for-testing)下载的，并且为对应版本(
+  默认最新)，才可使用
+- 非windows的操作系统，请自行下载对应的驱动到src/main/resources路径下解压使用
 
 更多环境配置详情请点击：📚 [环境配置](https://github.com/loks666/get_jobs/wiki/环境配置)
 
@@ -67,6 +64,13 @@ cd get_jobs
     - **Constant.WAIT_TIME**：超时等待时间，单位秒，用于等待页面加载
     - **cookie登录**: 扫码后会自动保存**cookie.json**文件在代码运行目录下，换号直接删除**cookie.json**即可
     - 每个平台的配置转换码都在平台文件夹下的Enum类里，找到相应的代码添加到类中即可
+
+- 📢 企业微信消息推送设置
+    - 把[.env_templete](src/main/resources/.env_templete)文件重命名为[.env](src/main/resources/.env_templete)
+    - 在企业微信中创建一个群聊，然后添加机器人，获取到机器人URL，复制到`.env`文件中
+    - 保持[config.yaml](src/main/resources/config.yaml)文件中`bot.is_send`为true
+
+  > 完成以上配置，在每个平台投递结束简历后，便会在企业微信的群聊内，推送岗位的投递情况，无须改动其他代码
 
 - ⚙️ **主要的配置文件**（[config.yaml](src/main/resources/config.yaml))
   ```
@@ -103,8 +107,8 @@ cd get_jobs
   cityCode: "上海"
   salary: "25001,35000" #薪资区间
   keywords: [ "AI工程师", "AIGC", "Java", "Python", "Golang" ]
-  ```
-- boss直聘([Boss.java](src/main/java/boss/Boss.java))【每日仅可发起100次新聊天，活跃度还行，但是每日投递次数太少】
+
+- boss直聘([Boss.java](src/main/java/boss/Boss.java))【最推荐！每日仅可发起100次新聊天，活跃度还行，但是每日投递次数太少】
 
   > 注意：Boss必须要关闭自动打招呼，设置配置文件的sayHi为你的打招呼语，否则会投递失败  
   > 投递结束后会自动更新黑名单企业，发送过不合适等消息的HR的公司会加入黑名单，不会在投递该公司  
@@ -118,46 +122,41 @@ cd get_jobs
 
 - 51job([Job.java](src/main/java/job51/Job51.java))【投递有上限，且限制搜索到的岗位数量，没什么活人】
 
-  ```
-  51job现在已经烂掉了，不建议使用
-  现在投递一段时间后会出现投递上限，
-  ```
+  > 51job现在已经烂掉了，不建议使用  
+  > 现在投递一段时间后会出现投递上限  
+  > 目前的解决方式是投一页暂停10秒，先这么着吧
+
 - 拉勾([Lagou.java](src/main/java/lagou/Lagou.java))【投递无上限，会限制投递的频率，没什么活人而且投不了几个岗位】
 
-   ```
-   默认使用微信扫码，请绑定微信账号
-  
-   拉勾需要指定默认投递简历(在线简历 or 附件简历)，否则会投递失败
-  
-   拉勾直接使用的是微信扫码登录，运行后直接扫码即可，开箱通用
-  
-   但是拉勾由于反爬机制较为严重，代码中嵌套了大量的sleep，导致效率较慢
-  
-   这边建议拉勾的脚本运行一段时间后差不多就行了，配合手动在app或者微信小程序投递简历效果更佳！
-   ```
+  > 默认使用微信扫码，请绑定微信账号  
+  > 拉勾需要指定默认投递简历(在线简历 or 附件简历)，否则会投递失败  
+  > 拉勾直接使用的是微信扫码登录，运行后直接扫码即可，开箱通用  
+  > 但是拉勾由于反爬机制较为严重，代码中嵌套了大量的sleep，导致效率较慢  
+  > 这边建议拉勾的脚本运行一段时间后差不多就行了，配合手动在app或者微信小程序投递简历效果更佳！  
+  > 拉勾目前有个玄学bug，投递的时候随机失败，可以解决的大佬请联系我
 
-- 猎聘([Liepin.java](src/main/java/liepin/Liepin.java))【默认打招呼无上限，主动发消息有上限，虽然成功率不高，好在量大】
+- 猎聘([Liepin.java](src/main/java/liepin/Liepin.java))【默认打招呼无上限，主动发消息有上限，虽然成功率不高，好在量大，较为推荐】
 
-  > 注意：需要在猎聘App最新版设置打招呼语(默或者自定义皆可)，即可自动发送消息，不会被限制
+  > 注意：需要在猎聘App最新版设置打招呼语(默或者自定义皆可)，即可自动发送消息，不会被限制  
+  > 只可微信扫码，请绑定微信账号  
+  > 需要使用最新版猎聘手机app设置打招呼文本，只要不主动发消息，可以无限制对猎头打招呼，程序默认为该配置。
 
-   ```
-   只可微信扫码，请绑定微信账号
-  
-   需要使用最新版猎聘手机app设置打招呼文本，只要不主动发消息，可以无限制对猎头打招呼，程序默认为该配置。
-   ```
 
-- 智联招聘([ZhiLian.java](src/Fmain/Fjava/Fzhilian/FZhiLian.java))【投递上限100左右，岗位质量较差,走投无路可以考虑】
+- 智联招聘([ZhiLian.java](src/main/java/zhilian/ZhiLian.java))【投递上限100左右，岗位质量较差,走投无路可以考虑】
 
-   ```
-  智联招聘需要指定默认投递简历(在线简历 or 附件简历)，否则会投递失败
-  
-  只可微信扫码，请绑定微信账号
-   ```
+  > 智联招聘需要指定默认投递简历(在线简历 or 附件简历)，否则会投递失败  
+  > 只可微信扫码，请绑定微信账号
 
-### 4️⃣ 最后一步：运行代码
+### 4️⃣ 运行代码
 
 - 🏃🏻‍♂️‍➡️ 直接运行你想要投递平台的下的代码即可  
   ![运行图片](src/main/resources/images/run1.png)
+
+### 5️⃣ 定时批量投递
+
+- 启动[StartAll.java](src/main/java/StartAll.java)即可批量投递所有平台
+- 但是需要你在之前的平台已经登录成功，否则会卡住
+- 目前默认为第二天早上8点，可以修改相关代码修改时间
 
 ****
 
@@ -176,7 +175,6 @@ cd get_jobs
 ## 📧 联系方式
 
 - V2VDaGF0OkFpckVsaWF1azk1Mjcs6K+35aSH5rOo77ya5pq06aOO6Zuo5bCx6KaB5p2l5LqG
-- 如果微信群链接失效，请添加上面的微信，或者进入QQ群联系
 
 ## 👨🏻‍🔧 QQ群
 
@@ -184,20 +182,18 @@ cd get_jobs
 
 <div style="display: flex;">
     <img src="src/main/resources/images/qq.jpg" alt="qq群" height="600">
-    <img src="src/main/resources/images/wgroup.jpg" alt="微信群" height="600">
 
 </div>
 
-> 点击下面的链接可直接加群
+> 点击下面的链接可直接加群，微信群由于没有活跃度，所以停止了
 
 [![][qq-shield-badge]][qq-link]
 
 ## 🚩 付费部署
 
-> 本项目文档已相对完善，如仍需付费部署，请添加QQ群或微信联系群主
+> 本项目文档已相对完善，如仍需付费部署，请添加QQ群联系群主
 
-- 如果你不想进行繁琐的配置：希望全部代部署：200/次
-- 如果你可以自己下载环境部署的的各种软件(IDEA，Maven，Java，Git)，只是希望帮忙配置环境运行：¥100/次
+- 如果你不想进行繁琐的配置：希望全部代部署：¥200/次
 - 如需定制化修改请联系商议
 - 请注意：
     1. 付费部署是包含配置环境后，每一个平台运行正常，但配置文件等岗位信息，需要自行修改，定制修改不包含部署范围内。
@@ -213,14 +209,16 @@ cd get_jobs
     2. cookie有效期延长，保持至少一周（拉勾平台除外）【安慰剂】
 - 2024-04-28 15:20:06
     1. boos：自动更新黑名单公司
-- 2024-05-13 01:49:38
-    1. boos：若公司名小于2个字或4个字母则不会添加进黑名单
-    2. 添加linux系统支持。
 - 2024-06-06 01:49:38
     1. boos：若公司名小于2个字或4个字母则不会添加进黑名单
     2. 添加linux系统支持。
-- 2024-06-06 17:41:20  
-  1. boss支持多城市投递。
+- 2024-06-06 17:41:20
+    1. boss支持多城市投递。
+- 2024-08-11 18:39:56
+    1. 修复智联，猎聘等不能投递的问题。
+    2. 添加定时投递功能
+- 2024-08-12 22:56:20
+    1. 添加企业微信消息推送功能
 
 --- 
 
@@ -236,7 +234,7 @@ cd get_jobs
     1. fork本项目
     2. 从master分支新建分支
     3. 开发完成后提交pull request到lok666/get_jobs的【dev】分支，注意是dev！！！
-    4. 等待管理员审核验证提交代码无误后，合并到master分支
+    4. 等待管理员审核验证提交代码无误后，合并到main分支
 
 [![][pr-welcome-shield]][pr-welcome-link]
 
@@ -253,12 +251,14 @@ cd get_jobs
 
 - 授人以渔: [自定义修改你的代码](https://github.com/loks666/get_jobs/wiki/授人以渔‐自定义修改你的代码)
 - 本项目受此启发:https://github.com/BeammNotFound/get-jobs-51job , 感谢大佬，让我们将爱传递下去~
+- 本项目创建于: 2024年3月7日 21:34:58
 
 ---
 
-## ☕️ 请我喝杯咖啡
+## ☕️ Github Star历史
 
-<img src="src/main/resources/images/aliPay.jpg" alt="支付宝付款码" height="500"> <img src="src/main/resources/images/wechatPay.jpg" alt="微信付款码" height="500">
+[![Stargazers over time](https://starchart.cc/loks666/get_jobs.svg?background=%23ffffff&axis=%23101010&line=%23e86161)](https://starchart.cc/loks666/get_jobs)
+
 
 <!-- LINK GROUP -->
 

@@ -12,32 +12,45 @@ import utils.JobUtils;
 import utils.SeleniumUtil;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import static utils.Bot.sendMessageByTime;
 import static utils.Constant.*;
+import static utils.JobUtils.formatDuration;
 
 public class ZhiLian {
     private static final Logger log = LoggerFactory.getLogger(ZhiLian.class);
-
     static String loginUrl = "https://passport.zhaopin.com/login";
-
     static String homeUrl = "https://sou.zhaopin.com/?";
-
     static boolean isLimit = false;
-
     static int maxPage = 500;
-
     static ZhilianConfig config = ZhilianConfig.init();
-
+    static List<Job> resultList = new ArrayList<>();
+    static Date startDate;
 
     public static void main(String[] args) {
         SeleniumUtil.initDriver();
+        startDate = new Date();
         login();
         config.getKeywords().forEach(keyword -> {
+            if (isLimit) {
+                return;
+            }
             CHROME_DRIVER.get(getSearchUrl(keyword, 1));
             submitJobs(keyword);
-            isLimit = false;
+
         });
+        log.info(resultList.isEmpty() ? "未投递新的岗位..." : "新投递公司如下:\n{}", resultList.stream().map(Object::toString).collect(Collectors.joining("\n")));
+        printResult();
+    }
+
+    private static void printResult() {
+        String message = String.format("\n智联招聘投递完成，共投递%d个岗位，用时%s", resultList.size(), formatDuration(startDate, new Date()));
+        log.info(message);
+        sendMessageByTime(message);
+        CHROME_DRIVER.close();
         CHROME_DRIVER.quit();
     }
 
@@ -140,25 +153,34 @@ public class ZhiLian {
     }
 
     private static void setMaxPages() {
-        // 模拟 Ctrl + End
-        ACTIONS.keyDown(Keys.CONTROL).sendKeys(Keys.END).keyUp(Keys.CONTROL).perform();
-        while (true) {
-            try {
-                WebElement button = CHROME_DRIVER.findElement(By.xpath("//button[contains(@class, 'btn') and contains(@class, 'soupager__btn')][last()]"));
+        try {
+            // 模拟 Ctrl + End
+            ACTIONS.keyDown(Keys.CONTROL).sendKeys(Keys.END).keyUp(Keys.CONTROL).perform();
+            while (true) {
+                WebElement button;
+                try {
+                    button = CHROME_DRIVER.findElement(By.xpath("//*[@id=\"positionList-hook\"]/div/div[2]/div[2]/div/a[7]"));
+                } catch (Exception ignore) {
+                    button = CHROME_DRIVER.findElement(By.xpath("//div[@class='soupager']//a[position()=last()]"));
+                }
                 if (button.getAttribute("disabled") != null) {
                     // 按钮被禁用，退出循环
                     break;
                 }
                 button.click();
-            } catch (Exception ignore) {
             }
+            WebElement lastPage = CHROME_DRIVER.findElement(By.xpath("//div[@class='soupager']//a[position()=last()-1]"));
+            if (lastPage != null && lastPage.getText().matches("\\d+")) {
+                maxPage = Integer.parseInt(lastPage.getText());
+                log.info("设置最大页数：{}", maxPage);
+            }
+            // 模拟 Ctrl + Home
+            ACTIONS.keyDown(Keys.CONTROL).sendKeys(Keys.HOME).keyUp(Keys.CONTROL).perform();
+        } catch (Exception ignore) {
+            StackTraceElement element = Thread.currentThread().getStackTrace()[1];
+            log.info("setMaxPages@设置最大页数异常！({}:{})", element.getFileName(), element.getLineNumber());
+            CHROME_DRIVER.close();
         }
-        WebElement lastPage = CHROME_DRIVER.findElement(By.xpath("//span[@class='soupager__index soupager__index--active']"));
-        if (lastPage != null && lastPage.getText().matches("\\d+")) {
-            maxPage = Integer.parseInt(lastPage.getText());
-        }
-        // 模拟 Ctrl + Home
-        ACTIONS.keyDown(Keys.CONTROL).sendKeys(Keys.HOME).keyUp(Keys.CONTROL).perform();
     }
 
     private static void printRecommendJobs(List<WebElement> jobs) {
@@ -176,49 +198,8 @@ public class ZhiLian {
             job.setCompanyName(companyName);
             job.setJobInfo(years + "·" + education);
             log.info("投递【{}】公司【{}】岗位，薪资【{}】，要求【{}·{}】，规模【{}】", companyName, jobName, salary, years, education, companyTag);
+            resultList.add(job);
         });
-    }
-
-    private static List<Job> getPositionList() {
-        int jobSize = CHROME_DRIVER.findElements(By.xpath("//div[@class='joblist-box__item clearfix']")).size();
-        List<WebElement> jobNameList = CHROME_DRIVER.findElements(By.xpath("//div[@class='jobinfo__top']//a"));
-        List<WebElement> salaryList = CHROME_DRIVER.findElements(By.xpath("//div[@class='jobinfo__top']//p"));
-        List<WebElement> jobAreaList = CHROME_DRIVER.findElements(By.xpath("//div[@class='jobinfo__other-info-item']//span"));
-        List<WebElement> companyNameList = CHROME_DRIVER.findElements(By.xpath("//div[contains(@class, 'companyinfo__top')]//a"));
-        List<WebElement> companyTagList = CHROME_DRIVER.findElements(By.xpath("//div[contains(@class, 'companyinfo__tag')]"));
-        List<WebElement> recruiterList = CHROME_DRIVER.findElements(By.xpath("//div[contains(@class, 'companyinfo__staff-name')]"));
-        if (jobNameList.size() != jobSize) {
-            log.info("jobNameList size does not match jobSize");
-        }
-        if (salaryList.size() != jobSize) {
-            log.info("salaryList size does not match jobSize");
-        }
-        if (jobAreaList.size() != jobSize) {
-            log.info("jobAreaList size does not match jobSize");
-        }
-        if (companyNameList.size() != jobSize) {
-            log.info("companyNameList size does not match jobSize");
-        }
-        if (companyTagList.size() != jobSize) {
-            log.info("companyTagList size does not match jobSize");
-        }
-        if (recruiterList.size() != jobSize) {
-            log.info("recruiterList size does not match jobSize");
-        }
-        ArrayList<Job> result = new ArrayList<>();
-        for (int i = 0; i < jobSize; i++) {
-            Job job = new Job();
-            job.setJobName(jobNameList.get(i).getText());
-            job.setSalary(salaryList.get(i).getText());
-            job.setJobArea(jobAreaList.get(i).getText().replaceAll("\n", " "));
-            job.setRecruiter(recruiterList.get(i).getText().trim());
-            job.setCompanyTag(companyTagList.get(i).getText().replaceAll("\n", " "));
-            job.setHref(companyNameList.get(i).getAttribute("href"));
-            job.setCompanyName(companyNameList.get(i).getText());
-            result.add(job);
-            log.info("选中【{}】公司【{}】岗位，【{}】地区，薪资【{}】，标签【{}】，HR【{}】", job.getCompanyName(), job.getJobName(), job.getJobArea(), job.getSalary(), job.getCompanyTag(), job.getRecruiter());
-        }
-        return result;
     }
 
     private static void login() {

@@ -133,7 +133,7 @@ public class SeleniumUtil {
         JSONArray jsonArray = null;
         try {
             String jsonText = new String(Files.readAllBytes(Paths.get(cookiePath)));
-            if (!jsonText.isBlank()) {
+            if (!jsonText.isEmpty()) {
                 jsonArray = new JSONArray(jsonText);
             }
         } catch (IOException e) {

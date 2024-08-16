@@ -10,9 +10,12 @@ import utils.JobUtils;
 import utils.SeleniumUtil;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
+import static utils.Bot.sendMessageByTime;
 import static utils.Constant.*;
+import static utils.JobUtils.formatDuration;
 import static utils.SeleniumUtil.isCookieValid;
 
 public class Liepin {
@@ -23,23 +26,26 @@ public class Liepin {
     static List<String> resultList = new ArrayList<>();
     static String baseUrl = "https://www.liepin.com/zhaopin/?";
     static LiepinConfig config = LiepinConfig.init();
-
+    static Date startDate;
 
     public static void main(String[] args) {
         SeleniumUtil.initDriver();
+        startDate = new Date();
         login();
         for (String keyword : config.getKeywords()) {
             submit(keyword);
         }
         printResult();
+    }
+
+    private static void printResult() {
+        String message = String.format("\n猎聘投递完成，共投递%d个岗位，用时%s", resultList.size(), formatDuration(startDate, new Date()));
+        log.info(message);
+        sendMessageByTime(message);
         CHROME_DRIVER.close();
         CHROME_DRIVER.quit();
     }
 
-    private static void printResult() {
-        log.info("投递完成,共投递 {} 个岗位！", resultList.size());
-        log.info("今日投递岗位:\n{}", String.join("\n", resultList));
-    }
 
     @SneakyThrows
     private static void submit(String keyword) {
@@ -114,9 +120,19 @@ public class Liepin {
             try {
                 button = CHROME_DRIVER.findElement(By.xpath("//button[@class='ant-btn ant-btn-primary ant-btn-round']"));
             } catch (Exception e) {
-                continue;
+                //嵌套一个异常，用来获取对应按钮
+                try {
+                    button = CHROME_DRIVER.findElement(By.xpath("//button[@Class='ant-btn ant-btn-round ant-btn-primary']"));
+                } catch (Exception e1) {
+                    continue;
+                }
             }
-            String text = button.getText();
+            String text;
+            try {
+                text = button.getText();
+            } catch (Exception ignore) {
+                text = "";
+            }
             if (text.contains("聊一聊")) {
                 try {
                     button.click();
@@ -165,12 +181,23 @@ public class Liepin {
 
     private static void scanLogin() {
         try {
-            SeleniumUtil.click(By.className("btn-sign-switch"));
+            SeleniumUtil.click(By.className("switch-login-type-btn-box"));
             log.info("等待扫码..");
-            WAIT.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//*[@id=\"main-container\"]/div/div[3]/div[2]/div[3]/div[1]/div[1]")));
+            boolean isLoggedIn = false;
+
+            // 一直循环，直到元素出现（用户扫码登录成功）
+            while (!isLoggedIn) {
+                try {
+                    isLoggedIn = !CHROME_DRIVER.findElements(By.xpath("//*[@id=\"main-container\"]/div/div[3]/div[2]/div[3]/div[1]/div[1]")).isEmpty();
+                } catch (Exception ignored) {
+                    SeleniumUtil.sleep(1);
+                }
+            }
+            log.info("用户扫码成功，继续执行...");
         } catch (Exception e) {
             log.error("scanLogin() 失败: {}", e.getMessage());
         }
     }
+
 
 }
